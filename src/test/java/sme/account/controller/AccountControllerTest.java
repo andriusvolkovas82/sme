@@ -34,6 +34,7 @@ import static sme.account.exception.ErrorMessage.INVALID_CURRENCY;
 import static sme.account.model.AccountOperation.CREDIT;
 import static sme.account.model.AccountOperation.DEBIT;
 import static sme.account.model.AccountStatus.CLOSED;
+import static sme.account.model.AccountStatus.OPEN;
 import static sme.account.util.CurrencyHelper.findCurrencyByNumericCode;
 
 @AutoConfigureMockMvc
@@ -71,7 +72,7 @@ public class AccountControllerTest {
                 .getResponse()
                 .getContentAsString();
 
-        String expectedResponse = AccountStatus.OPEN.toString();
+        String expectedResponse = OPEN.toString();
 
         assertEquals(toJson(expectedResponse), actualResponse);
     }
@@ -93,8 +94,19 @@ public class AccountControllerTest {
     @Test
     @Sql({"classpath:/import.sql"})
     void transferDebit() throws Exception {
+        String actualResponse = mockMvc.perform(get(ACCOUNT + BALANCE + "/1000456"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        AccountBalanceResponse expectedResponse = new AccountBalanceResponse(1000456L, findCurrencyByNumericCode(840), new BigDecimal("1002.00"), OPEN);
+
+        assertEquals(toJson(expectedResponse), actualResponse);
+
+
         TransferOperationRequest request = new TransferOperationRequest(1000456L, new BigDecimal("1.00"), 840, DEBIT);
-        String actualResponse = mockMvc.perform(post(ACCOUNT + TRANSFER)
+        actualResponse = mockMvc.perform(post(ACCOUNT + TRANSFER)
                 .contentType(APPLICATION_JSON)
                 .content(toJson(request)))
                 .andExpect(status().isOk())
@@ -103,6 +115,17 @@ public class AccountControllerTest {
                 .getContentAsString();
 
         assertEquals(OPERATION_COMPLETED, actualResponse);
+
+
+        actualResponse = mockMvc.perform(get(ACCOUNT + BALANCE + "/1000456"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        expectedResponse = new AccountBalanceResponse(1000456L, findCurrencyByNumericCode(840), new BigDecimal("1003.00"), OPEN);
+
+        assertEquals(toJson(expectedResponse), actualResponse);
     }
 
     @Test
